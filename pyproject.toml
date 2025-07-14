@@ -1,0 +1,131 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+hr_analysis = ["*.json"]
+
+[project]
+name = "hr_analysis"
+authors = [{ name = "fares201040", email = "fares201040@gmail.com" }]
+description = "My package description"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["one", "two"]
+license = { text = "MIT" }
+classifiers = ["Programming Language :: Python :: 3"]
+dependencies = ["numpy", 'importlib-metadata; python_version<"3.8"']
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+release = ["build", "twine"]
+static-code-qa = ["pre-commit"]
+dev = ["hr_analysis[test,release,static-code-qa]"]
+
+[tool.setuptools.dynamic]
+version = { file = "version.txt" }
+
+[tool.pytest.ini_options]
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+include = '\.pyi?$'
+exclude=['venv']
+
+extend-exclude = '''
+(
+  ^/foo.py
+  | .*_pb2.py
+  | (^|/)(venv|\.venv|env|\.env)/  # Exclude virtual environment folders from anywhere
+)
+'''
+
+[tool.flake8]
+docstring-convention = "all"
+ignore = ["D107", "D212", "E501", "W503", "W605", "D203", "D100","D103", "D104", "D205"]
+exclude = ["venv", ".venv", "env", ".env", "*/venv/*", "*/.venv/*", "*/env/*", "*/.env/*"]
+max-line-length = 119
+
+# radon
+radon-max-cc = 10
+
+[tool.isort]
+profile = "black"
+multi_line_output = "VERTICAL_HANGING_INDENT"
+force_grid_wrap = 2
+line_length = 119
+
+
+[tool.pylint]
+max-line-length = 88
+ignore-paths = [
+    "(^|/|\\\\)venv($|/|\\\\)",
+    "(^|/|\\\\)\\.venv($|/|\\\\)",
+    "(^|/|\\\\)env($|/|\\\\)",
+    "(^|/|\\\\)\\.env($|/|\\\\)"
+]
+ignore-patterns = [
+    "(^|/|\\\\)venv/.*",
+    "(^|/|\\\\)\\.venv/.*",
+    "(^|/|\\\\)env/.*",
+    "(^|/|\\\\)\\.env/.*"
+]
+# [tool.pylint."messages control"]
+# disable = [
+#     "line-too-long",
+#     "trailing-whitespace",
+#     "missing-function-docstring",
+#     "consider-using-f-string",
+#     "import-error",
+#     "too-few-public-methods",
+#     "redefined-outer-name",
+#     "missing-docstring",
+#     "C0114",  # missing-module-docstring
+#     "C0115",  # missing-class-docstring
+#     "C0116",  # missing-function-docstring
+#     "D104",   # Missing docstring in public package
+#     "D103",   # Missing docstring in public function
+#     "D205",   # blank line required between summary line and description
+# ]
+messages_control = { disable =[
+    "line-too-long",
+    "trailing-whitespace",
+    "missing-function-docstring",
+    "consider-using-f-string",
+    "import-error",
+    "too-few-public-methods",
+    "redefined-outer-name",
+    "missing-docstring",
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "W0105",
+    "D104",   # Missing docstring in public package
+    "D103",   # Missing docstring in public function
+    "D205",   # blank line required between summary line and description
+]}
+
+[tool.mypy]
+exclude = "venv/|.venv/|env/|.env/"
+# explicit_package_bases = true
+
+[tool.ruff]
+line-length = 119
+exclude = [
+    "venv",
+    ".venv",
+    "env",
+    ".env"
+]
+select = ["E", "F", "B", "ERA"]
+ignore = ["E501", "F401", "ERA001"]
+unfixable = ["B"]
+# per-file-ignores = { "tests/*" = ["E203", "E501"] }
+# Exclude virtual environments from linting
+
+# [tool.ruff.per-file-ignores]
+# "__init__.py" = ["E402"]
+# "path/to/file.py" = ["E402"]

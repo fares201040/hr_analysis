@@ -2,10 +2,9 @@ pandas==2.2.2
 fastapi==0.115.6
 uvicorn==0.33.0
 pydantic==2.10.3
-cython>=0.29
 numpy>=1.21
 python-dateutil>=2.8
 pytz>=2023.3
-tzdata>=2023.3
+cython>=0.29
 setuptools>=65.0
 wheel>=0.40

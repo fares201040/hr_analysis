@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: hr-analysis
+    env: python
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: python src.hr_analysis.api.main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+    plan: starter
+    autoDeploy: true

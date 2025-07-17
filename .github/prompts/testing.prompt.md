@@ -1,0 +1,1 @@
+<!-- Generate a pytest test for a FastAPI endpoint for any created endpoint that returns `{"status": "ok"}`.   -->

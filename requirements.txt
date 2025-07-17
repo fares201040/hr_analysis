@@ -7,5 +7,4 @@ fastapi==0.115.6
 uvicorn==0.33.0
 pydantic==2.10.3
 --only-binary :all:
-numpy==1.21.0
 pandas==2.2.1

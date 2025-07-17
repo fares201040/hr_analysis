@@ -5,6 +5,7 @@ from fastapi import FastAPI
 import sys
 from pathlib import Path
 
+app = FastAPI()
 
 # --- Run data cleaner at startup ---
 @app.on_event("startup")

@@ -1,4 +1,3 @@
-
 # Copilot Instructions for hr_analysis
 
 ## Project Overview
@@ -44,6 +43,13 @@
 - `.github/workflows/`: GitHub Actions for CI/CD.
 - `diagrams/`: Mermaid diagrams for CI/CD and logic flows.
 - `README.md`, `project_structure.md`: Documentation and structure.
+
+## Git Commit and Commit Message Generation
+Be extremely detailed with the file changes and the reason for the change.
+
+## Code Generation
+Always generate the endpoints in the `reports_summary.md` and `report_details.md` files, including a reference number that matches the corresponding report number in `report_details.md`. Imports block and any initialization code should be at the top of the file.
+The code should be modular, reusable, and follow the project's architecture. Use the existing patterns and structures as a guide for new code. Always ensure that new code is well-documented and tested.
 
 ---
 

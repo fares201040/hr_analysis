@@ -15,12 +15,12 @@
     // "flake8.args": [
     //     "--config=${workspaceFolder}/pyproject.toml"
     // ],
-    "mypy-type-checker.args": [
-        "--config-file=${workspaceFolder}/pyproject.toml"
-    ],
-    "pylint.args": [
-        "--rcfile=${workspaceFolder}/pyproject.toml"
-    ],
+    // "mypy-type-checker.args": [
+    //     "--config-file=${workspaceFolder}/pyproject.toml"
+    // ],
+    // "pylint.args": [
+    //     "--rcfile=${workspaceFolder}/pyproject.toml"
+    // ],
     "[python]": {
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit"
@@ -41,4 +41,9 @@
             "color": "lightgreen"
         }
     ],
+    // "github.copilot.chat.commitMessageGeneration.instructions": [
+    //     {
+    //         "text": "Be extremely detailed with the file changes and the reason for the change."
+    //     }
+    // ]
 }

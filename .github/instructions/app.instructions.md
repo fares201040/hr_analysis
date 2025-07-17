@@ -50,6 +50,9 @@ When modifying or creating Python files in this project, follow these rules:
 ## 11. Data Source
 - Get the data from src>clean_data>cleaned.csv.
 
+## 12. Endpoints referrence
+- Each endpoint should be documented in the `reports_summary.md` and `report_details.md` files. Additionally, each endpoint should include a reference number that matches the corresponding report number in `report_details.md`.
+
 ---
 
 *Update these instructions as needed to reflect project-specific

@@ -47,6 +47,9 @@ When modifying or creating Python files in this project, follow these rules:
 - Write clear, concise commit messages.
 - Do not commit generated files or secrets.
 
+## 11. Data Source
+- Get the data from src>clean_data>cleaned.csv.
+
 ---
 
 *Update these instructions as needed to reflect project-specific

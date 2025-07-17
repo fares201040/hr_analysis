@@ -23,6 +23,36 @@ from fastapi import (
 
 router = APIRouter()
 
+
+@router.get("/reports/attendance/all", response_model=Dict[str, List[Dict[str, Any]]])
+def all_attendance_report() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Get all Employee Attendance records (no filtering).
+
+    Returns all attendance records from cleaned.csv.
+
+    Example response:
+    {
+        "attendance": [
+            {
+                "employee_id": "A10017",
+                "date": "2025-07-01",
+                "department": "Engineering",
+                "day_type": "Working Day",
+                "exception": "Lateness and Early Out"
+            },
+            ...
+        ]
+    }
+    """
+    data_path = Path("d:/python projects/hr_analysis/hr_analysis/src/clean_data/cleaned.csv")
+    df = pd.read_csv(data_path)
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    columns = ["employee_id", "date", "department", "day_type", "exception"]
+    attendance = df[columns].fillna("").to_dict(orient="records")
+    return {"attendance": attendance}
+
 @router.get("/reports/attendance", response_model=Dict[str, List[Dict[str, Any]]])
 def employee_attendance_report(
     employee_id: Optional[str] = Query(None, description="Filter by employee ID"),
@@ -53,7 +83,7 @@ def employee_attendance_report(
         ]
     }
     """
-    data_path = Path(__file__).parent.parent.parent / "clean_data" / "cleaned.csv"
+    data_path = Path("d:/python projects/hr_analysis/hr_analysis/src/clean_data/cleaned.csv")
     df = pd.read_csv(data_path)
 
     # Standardize date column

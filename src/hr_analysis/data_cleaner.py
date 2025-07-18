@@ -8,6 +8,23 @@ import pandas as pd
 
 
 
+# Internal cache for cleaned DataFrame
+_cleaned_df_cache = None
+
+def get_cleaned_df() -> pd.DataFrame:
+    """
+    Loads and returns the cleaned DataFrame from disk (clean_data/cleaned.csv) only once.
+    Subsequent calls return the cached DataFrame in memory.
+    Usage: from src.hr_analysis.data_cleaner import get_cleaned_df
+    """
+    global _cleaned_df_cache
+    if _cleaned_df_cache is None:
+        base_dir = Path(__file__).parent.parent
+        cleaned_path = base_dir / "clean_data" / "cleaned.csv"
+        _cleaned_df_cache = pd.read_csv(cleaned_path, index_col=0)
+    return _cleaned_df_cache
+
+
 def clean_all_csvs() -> None:
     """
     Cleans all CSV files in unclean_data:
@@ -16,6 +33,7 @@ def clean_all_csvs() -> None:
     - Uniforms columns with date values to pandas datetime format
     - Saves cleaned files with '_cleaned' suffix in unclean_data
     """
+    global merged_df
     base_dir = Path(__file__).parent.parent
     unclean_dir = base_dir / "unclean_data"
     csv_files = list(unclean_dir.glob("*.csv"))

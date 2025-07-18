@@ -7,18 +7,6 @@ from pathlib import Path
 
 app = FastAPI()
 
-# --- Run data cleaner at startup ---
-@app.on_event("startup")
-def run_data_cleaner():
-    # Import DataCleaner from the correct path
-    sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-    try:
-        from src.hr_analysis.data_cleaner import DataCleaner
-        cleaner = DataCleaner()
-        cleaner.clean_all_csvs()
-    except Exception as e:
-        print(f"[Startup] Data cleaning failed: {e}")
-
 # Import and include routers here
 from src.hr_analysis.api.endpoints import (
     dashboard,

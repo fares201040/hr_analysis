@@ -518,12 +518,17 @@ def overtime_weekly_summary(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
-    employee_ids: Optional[List[str]] = Query(None, description="Filter by employee IDs (comma separated)")
+    employee_ids: Optional[List[str]] = Query(None, description="Filter by employee IDs (comma separated)"),
+    week_start: str = Query("sunday", description="Start day of week: 'sunday' or 'monday' (default: sunday)")
 ) -> Dict[str, Any]:
     """
     For each employee, shows how many days they worked overtime in each week.
-    Columns are ISO week numbers (YYYY-Www), rows are employees, each cell is count of overtime days for that employee in that week.
+    You can select the week start day: Sunday (default) or Monday (ISO week).
+    - If week_start='sunday', weeks start on Sunday and end on Saturday.
+    - If week_start='monday', weeks start on Monday and end on Sunday (ISO week).
+    Columns are week labels (YYYY-Www), rows are employees, each cell is count of overtime days for that employee in that week.
     """
+    import numpy as np
     df = pd.read_csv(DATA_PATH)
     # Standardize date column
     if "date" in df.columns:
@@ -542,14 +547,22 @@ def overtime_weekly_summary(
     # Only consider days with overtime (total_ot > 0)
     if "total_ot" in df.columns:
         df = df[df["total_ot"].fillna(0) > 0]
-    # Add ISO week column
-    df["iso_week"] = df["date"].dt.strftime("%Y-W%V")
+    # Week calculation
+    if week_start.lower() == "monday":
+        # ISO week: Monday-Sunday
+        df["week_label"] = df["date"].dt.strftime("%Y-W%V")
+    else:
+        # Custom week: Sunday-Saturday
+        # Shift dates so that week starts on Sunday
+        # pandas weekday: Monday=0, Sunday=6
+        df["week_start"] = df["date"] - pd.to_timedelta((df["date"].dt.weekday + 1) % 7, unit="D")
+        df["week_label"] = df["week_start"].dt.strftime("%Y-W%U")
     # Group by employee and week, count overtime days
     summary = (
-        df.groupby(["employee_id", "iso_week"]).size().reset_index(name="overtime_days")
+        df.groupby(["employee_id", "week_label"]).size().reset_index(name="overtime_days")
     )
     # Pivot to wide format: rows=employee, columns=week
-    pivot = summary.pivot(index="employee_id", columns="iso_week", values="overtime_days").fillna(0).astype(int)
+    pivot = summary.pivot(index="employee_id", columns="week_label", values="overtime_days").fillna(0).astype(int)
     # Build response
     result = []
     for emp_id, row in pivot.iterrows():

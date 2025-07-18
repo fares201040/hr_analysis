@@ -1,4 +1,3 @@
-
 """Report endpoints for HR Analytics API.
 
 This module provides API endpoints for HR analytics reports.
@@ -27,12 +26,40 @@ from fastapi import (
 
 # Global data path (cross-platform, relative to this file)
 DATA_PATH = (Path(__file__).resolve().parent.parent.parent.parent / "clean_data" / "cleaned.csv")
-print(f"[DEBUG] DATA_PATH resolved to: {DATA_PATH}")
+# print(f"[DEBUG] DATA_PATH resolved to: {DATA_PATH}")
 
 # Initialize FastAPI router
 router = APIRouter()
 
+
 # --- Report Endpoints ---
+
+# Report 23: Department List Report — see report_details.md
+@router.get("/reports/departments", response_model=Dict[str, List[str]])
+def department_list_report() -> Dict[str, List[str]]:
+    """
+    Returns a list of all departments found in the cleaned data file.
+    """
+    df = pd.read_csv(DATA_PATH)
+    if "department" in df.columns:
+        departments = sorted(df["department"].dropna().unique())
+    else:
+        departments = []
+    return {"departments": departments}
+
+
+# Report 22: Employee List Report — see report_details.md
+@router.get("/reports/employees", response_model=Dict[str, List[str]])
+def employee_list_report() -> Dict[str, List[str]]:
+    """
+    Returns a list of all employee IDs found in the cleaned data file.
+    """
+    df = pd.read_csv(DATA_PATH)
+    if "employee_id" in df.columns:
+        employees = sorted(df["employee_id"].dropna().unique())
+    else:
+        employees = []
+    return {"employees": employees}
 
 ## Report 20: Monthly Overtime Comparison — see report_details.md
 @router.get("/reports/overtime-month-comparison", response_model=Dict[str, Any])

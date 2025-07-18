@@ -54,15 +54,43 @@ Below are suggested API endpoints for HR analytics reports, including details an
 
 ---
 
-## 3. List Reports
-**Endpoint:** `/reports`
-**Description:** Lists all available report endpoints.
+
+
+---
+
+## 22. Department List Report
+**Endpoint:** `/reports/departments`
+**Description:** Returns a list of all departments found in the cleaned data file.
 **Parameters:** None
 
 **Example Response:**
 ```json
 {
-  "reports": []
+  "departments": [
+    "Engineering",
+    "Human Resource",
+    "Finance",
+    "Marketing"
+  ]
+}
+```
+
+---
+
+## 23. Employee List Report
+**Endpoint:** `/reports/employees`
+**Description:** Returns a list of all employee IDs found in the cleaned data file.
+**Parameters:** None
+
+**Example Response:**
+```json
+{
+  "employees": [
+    "A10017",
+    "A10018",
+    "A10019",
+    "A10020"
+  ]
 }
 ```
 

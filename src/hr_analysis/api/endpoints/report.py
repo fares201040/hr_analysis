@@ -24,8 +24,10 @@ from fastapi import (
     Query,
 )
 
+
 # Global data path (cross-platform, relative to this file)
 DATA_PATH = (Path(__file__).resolve().parent.parent.parent / "clean_data" / "cleaned.csv")
+print(f"[DEBUG] DATA_PATH resolved to: {DATA_PATH}")
 
 # Initialize FastAPI router
 router = APIRouter()

@@ -33,7 +33,7 @@ markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 line-length = 88
 target-version = ['py37']
 include = '\.pyi?$'
-exclude=['venv']
+exclude='venv'
 
 extend-exclude = '''
 (

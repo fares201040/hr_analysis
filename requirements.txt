@@ -8,3 +8,5 @@ uvicorn==0.33.0
 pydantic==2.10.3
 numpy==1.26.4
 pandas==2.2.1
+playwright
+# playwright install

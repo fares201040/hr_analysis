@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 # Internal cache for cleaned DataFrame
-_cleaned_df_cache = None
+# _cleaned_df_cache = None
 
 
 def clean_all_csvs() -> pd.DataFrame:
@@ -18,9 +18,9 @@ def clean_all_csvs() -> pd.DataFrame:
     - Saves cleaned file in clean_data/cleaned.csv
     Returns cleaned DataFrame from memory for subsequent calls.
     """
-    global _cleaned_df_cache
-    if _cleaned_df_cache is not None:
-        return _cleaned_df_cache
+    # global _cleaned_df_cache
+    # if _cleaned_df_cache is not None:
+    # return _cleaned_df_cache
     base_dir = Path(__file__).parent.parent
     unclean_dir = base_dir / "unclean_data"
     csv_files = list(unclean_dir.glob("*.csv"))
@@ -69,7 +69,7 @@ def clean_all_csvs() -> pd.DataFrame:
     clean_dir.mkdir(exist_ok=True)
     cleaned_path = clean_dir / "cleaned.csv"
     merged_df.to_csv(cleaned_path)
-    _cleaned_df_cache = merged_df
+    # _cleaned_df_cache = merged_df
     return merged_df
 
 

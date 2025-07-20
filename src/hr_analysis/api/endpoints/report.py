@@ -23,12 +23,14 @@ from fastapi import (
     Query,
 )
 
-# Use project-level cleaned DataFrame loader
-from src.hr_analysis.data_cleaner import DataCleaner
+# Use function-based cleaned DataFrame loader
+from src.hr_analysis.data_cleaner import clean_all_csvs
 
-# Initialize FastAPI router and DataCleaner instance
+# Use project-level cleaned DataFrame loader
+
+
+# Initialize FastAPI router
 router = APIRouter()
-data_cleaner = DataCleaner()
 
 
 # --- Report Endpoints ---
@@ -40,7 +42,7 @@ def department_list_report() -> Dict[str, List[str]]:
     """
     Returns a list of all departments found in the cleaned data file.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     if "department" in df.columns:
         departments = sorted(df["department"].dropna().unique())
     else:
@@ -54,7 +56,7 @@ def employee_list_report() -> Dict[str, List[str]]:
     """
     Returns a list of all employee IDs found in the cleaned data file.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     if "employee_id" in df.columns:
         employees = sorted(df["employee_id"].dropna().unique())
     else:
@@ -74,7 +76,7 @@ def overtime_month_comparison(
     Compares overtime hours across months for departments or employees.
     Filters: department, employee_id, start_date, end_date.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -137,7 +139,7 @@ def all_attendance_report() -> Dict[str, List[Dict[str, Any]]]:
         ]
     }
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     columns = ["employee_id", "date", "department", "day_type", "exception"]
@@ -176,7 +178,7 @@ def employee_attendance_report(
         ]
     }
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
 
     # Standardize date column
     if "date" in df.columns:
@@ -214,7 +216,7 @@ def overtime_trends(
     Shows overtime hours trends (daily, weekly, monthly) for employees or departments.
     Filters: department, employee_id, time granularity, date range.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -269,7 +271,7 @@ def top_overtime_employees(
     Lists employees with the highest overtime hours in a given period.
     Filters: department, date range, top N.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -332,7 +334,7 @@ def overtime_exceptions(
     Identifies overtime entries that exceed policy limits or require approval.
     Filters: department, date range, threshold hours.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -383,7 +385,7 @@ def top_overtime_employees(
     Lists employees with the highest overtime hours in a given period.
     Filters: department, date range, top N.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -445,7 +447,7 @@ def overtime_trends(
     Shows overtime hours trends (daily, weekly, monthly) for employees or departments.
     Filters: department, employee_id, time granularity, date range.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -498,7 +500,7 @@ def department_overtime(
     Aggregates total overtime hours by department for a selected period.
     Filters: date range.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -540,7 +542,7 @@ def overtime_summary(
     Summarizes total overtime hours per employee for a given period.
     Filters: department, date range.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -604,7 +606,7 @@ def overtime_weekly_summary(
     """
     import numpy as np
 
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -665,7 +667,7 @@ def overtime_department_comparison(
     Compares overtime hours across departments for a selected period.
     Filters: start_date, end_date.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -710,7 +712,7 @@ def overtime_employee_comparison(
     Compares overtime hours between selected employees for a given period.
     Filters: employee_ids, start_date, end_date.
     """
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -749,5 +751,5 @@ def overtime_employee_comparison(
 @router.get("/reports")
 def list_reports():
     """List all reports."""
-    df = data_cleaner.clean_all_csvs()
+    df = clean_all_csvs()
     return {"reports": []}

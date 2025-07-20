@@ -257,7 +257,7 @@ from pathlib import Path
 import pandas as pd
 
 # Internal cache for cleaned DataFrame
-# _cleaned_df_cache = None
+_cleaned_df_cache = None
 
 
 def clean_all_csvs() -> pd.DataFrame:

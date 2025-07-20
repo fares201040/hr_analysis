@@ -35,7 +35,6 @@ router = APIRouter()
 
 # --- Report Endpoints ---
 
-
 # Report 23: Department List Report — see report_details.md
 @router.get("/reports/departments", response_model=Dict[str, List[str]])
 def department_list_report() -> Dict[str, List[str]]:

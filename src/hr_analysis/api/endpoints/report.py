@@ -7,7 +7,6 @@ with optional filtering by employee_id, date range, and department.
 Data is loaded from cleaned.csv in the clean_data folder.
 """
 
-
 from pathlib import Path
 from typing import (
     Any,
@@ -17,7 +16,6 @@ from typing import (
     Union,
 )
 
-
 import pandas as pd
 from fastapi import (
     APIRouter,
@@ -26,16 +24,15 @@ from fastapi import (
 )
 
 # Use project-level cleaned DataFrame loader
-from src.hr_analysis.data_cleaner import get_cleaned_df
+from src.hr_analysis.data_cleaner import DataCleaner
 
-
-
-
-# Initialize FastAPI router
+# Initialize FastAPI router and DataCleaner instance
 router = APIRouter()
+data_cleaner = DataCleaner()
 
 
 # --- Report Endpoints ---
+
 
 # Report 23: Department List Report — see report_details.md
 @router.get("/reports/departments", response_model=Dict[str, List[str]])
@@ -43,7 +40,7 @@ def department_list_report() -> Dict[str, List[str]]:
     """
     Returns a list of all departments found in the cleaned data file.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     if "department" in df.columns:
         departments = sorted(df["department"].dropna().unique())
     else:
@@ -57,12 +54,13 @@ def employee_list_report() -> Dict[str, List[str]]:
     """
     Returns a list of all employee IDs found in the cleaned data file.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     if "employee_id" in df.columns:
         employees = sorted(df["employee_id"].dropna().unique())
     else:
         employees = []
     return {"employees": employees}
+
 
 ## Report 20: Monthly Overtime Comparison — see report_details.md
 @router.get("/reports/overtime-month-comparison", response_model=Dict[str, Any])
@@ -70,13 +68,13 @@ def overtime_month_comparison(
     department: Optional[str] = Query(None, description="Filter by department"),
     employee_id: Optional[str] = Query(None, description="Filter by employee ID"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ) -> Dict[str, Any]:
     """
     Compares overtime hours across months for departments or employees.
     Filters: department, employee_id, start_date, end_date.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -98,19 +96,24 @@ def overtime_month_comparison(
     df["month"] = df["date"].dt.strftime("%Y-%m")
     # Group by month, sum total_ot
     if "total_ot" in df.columns:
-        summary = (
-            df.groupby(["month"])["total_ot"].sum().reset_index()
-        )
+        summary = df.groupby(["month"])["total_ot"].sum().reset_index()
     else:
         summary = df.groupby(["month"]).size().reset_index(name="total_overtime_hours")
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "month": row["month"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "month": row["month"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"monthly_overtime_comparison": result}
+
 
 ## Report 2: All Employee Attendance Report (No Filtering) — see report_details.md
 @router.get("/reports/attendance/all", response_model=Dict[str, List[Dict[str, Any]]])
@@ -134,12 +137,13 @@ def all_attendance_report() -> Dict[str, List[Dict[str, Any]]]:
         ]
     }
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     columns = ["employee_id", "date", "department", "day_type", "exception"]
     attendance = df[columns].fillna("").to_dict(orient="records")
     return {"attendance": attendance}
+
 
 ## Report 1: Employee Attendance Report (Filtered) — see report_details.md
 @router.get("/reports/attendance", response_model=Dict[str, List[Dict[str, Any]]])
@@ -147,7 +151,7 @@ def employee_attendance_report(
     employee_id: Optional[str] = Query(None, description="Filter by employee ID"),
     department: Optional[str] = Query(None, description="Filter by department"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
     Get Employee Attendance Report.
@@ -172,7 +176,7 @@ def employee_attendance_report(
         ]
     }
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
 
     # Standardize date column
     if "date" in df.columns:
@@ -202,13 +206,15 @@ def overtime_trends(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
     employee_id: Optional[str] = Query(None, description="Filter by employee ID"),
-    granularity: Optional[str] = Query("daily", description="Time granularity: daily, weekly, monthly")
+    granularity: Optional[str] = Query(
+        "daily", description="Time granularity: daily, weekly, monthly"
+    ),
 ) -> Dict[str, Any]:
     """
     Shows overtime hours trends (daily, weekly, monthly) for employees or departments.
     Filters: department, employee_id, time granularity, date range.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -242,10 +248,7 @@ def overtime_trends(
     # Build response
     result = []
     for _, row in summary.iterrows():
-        entry = {
-            "date": row["period"],
-            "total_overtime_hours": float(row["total_ot"])
-        }
+        entry = {"date": row["period"], "total_overtime_hours": float(row["total_ot"])}
         if "department" in row:
             entry["department"] = row["department"]
         if "employee_id" in row:
@@ -260,13 +263,13 @@ def top_overtime_employees(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
-    top_n: Optional[int] = Query(10, description="Limit results to top N records")
+    top_n: Optional[int] = Query(10, description="Limit results to top N records"),
 ) -> Dict[str, Any]:
     """
     Lists employees with the highest overtime hours in a given period.
     Filters: department, date range, top N.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -287,19 +290,33 @@ def top_overtime_employees(
             df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
         )
     else:
-        summary = df.groupby(["employee_id", "department"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["employee_id", "department"])
+            .size()
+            .reset_index(name="total_overtime_hours")
+        )
     # Sort and limit to top N
-    summary = summary.sort_values(by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours", ascending=False)
+    summary = summary.sort_values(
+        by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours",
+        ascending=False,
+    )
     summary = summary.head(top_n)
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "employee_id": row["employee_id"],
-            "department": row["department"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "employee_id": row["employee_id"],
+                "department": row["department"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"top_overtime_employees": result}
+
 
 ## Report 17: Overtime Exception Report — see report_details.md
 @router.get("/reports/overtime-exceptions", response_model=Dict[str, Any])
@@ -307,13 +324,15 @@ def overtime_exceptions(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
-    threshold_hours: Optional[float] = Query(None, description="Threshold hours for exception")
+    threshold_hours: Optional[float] = Query(
+        None, description="Threshold hours for exception"
+    ),
 ) -> Dict[str, Any]:
     """
     Identifies overtime entries that exceed policy limits or require approval.
     Filters: department, date range, threshold hours.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -334,25 +353,37 @@ def overtime_exceptions(
     # Build response
     result = []
     for _, row in df.iterrows():
-        result.append({
-            "employee_id": row["employee_id"],
-            "department": row["department"] if "department" in row else None,
-            "date": row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"]),
-            "overtime_hours": float(row["total_ot"]) if "total_ot" in row else None,
-            "exception_reason": "Exceeded daily limit" if threshold_hours is not None and row["total_ot"] > threshold_hours else "Requires approval"
-        })
+        result.append(
+            {
+                "employee_id": row["employee_id"],
+                "department": row["department"] if "department" in row else None,
+                "date": (
+                    row["date"].strftime("%Y-%m-%d")
+                    if hasattr(row["date"], "strftime")
+                    else str(row["date"])
+                ),
+                "overtime_hours": float(row["total_ot"]) if "total_ot" in row else None,
+                "exception_reason": (
+                    "Exceeded daily limit"
+                    if threshold_hours is not None and row["total_ot"] > threshold_hours
+                    else "Requires approval"
+                ),
+            }
+        )
     return {"overtime_exceptions": result}
+
+
 def top_overtime_employees(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
-    top_n: Optional[int] = Query(10, description="Limit results to top N records")
+    top_n: Optional[int] = Query(10, description="Limit results to top N records"),
 ) -> Dict[str, Any]:
     """
     Lists employees with the highest overtime hours in a given period.
     Filters: department, date range, top N.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -373,31 +404,48 @@ def top_overtime_employees(
             df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
         )
     else:
-        summary = df.groupby(["employee_id", "department"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["employee_id", "department"])
+            .size()
+            .reset_index(name="total_overtime_hours")
+        )
     # Sort and limit to top N
-    summary = summary.sort_values(by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours", ascending=False)
+    summary = summary.sort_values(
+        by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours",
+        ascending=False,
+    )
     summary = summary.head(top_n)
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "employee_id": row["employee_id"],
-            "department": row["department"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "employee_id": row["employee_id"],
+                "department": row["department"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"top_overtime_employees": result}
+
+
 def overtime_trends(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
     employee_id: Optional[str] = Query(None, description="Filter by employee ID"),
-    granularity: Optional[str] = Query("daily", description="Time granularity: daily, weekly, monthly")
+    granularity: Optional[str] = Query(
+        "daily", description="Time granularity: daily, weekly, monthly"
+    ),
 ) -> Dict[str, Any]:
     """
     Shows overtime hours trends (daily, weekly, monthly) for employees or departments.
     Filters: department, employee_id, time granularity, date range.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -431,27 +479,26 @@ def overtime_trends(
     # Build response
     result = []
     for _, row in summary.iterrows():
-        entry = {
-            "date": row["period"],
-            "total_overtime_hours": float(row["total_ot"])
-        }
+        entry = {"date": row["period"], "total_overtime_hours": float(row["total_ot"])}
         if "department" in row:
             entry["department"] = row["department"]
         if "employee_id" in row:
             entry["employee_id"] = row["employee_id"]
         result.append(entry)
     return {"overtime_trends": result}
+
+
 ## Report 14: Department Overtime Summary — see report_details.md
 @router.get("/reports/department-overtime", response_model=Dict[str, Any])
 def department_overtime(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ) -> Dict[str, Any]:
     """
     Aggregates total overtime hours by department for a selected period.
     Filters: date range.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -462,30 +509,38 @@ def department_overtime(
         df = df[df["date"] <= pd.to_datetime(end_date)]
     # Group by department, sum total_ot
     if "total_ot" in df.columns:
-        summary = (
-            df.groupby(["department"])["total_ot"].sum().reset_index()
-        )
+        summary = df.groupby(["department"])["total_ot"].sum().reset_index()
     else:
-        summary = df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
+        )
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "department": row["department"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "department": row["department"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"department_overtime": result}
+
+
 ## Report 13: Employee Overtime Summary — see report_details.md
 def overtime_summary(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
-    department: Optional[str] = Query(None, description="Filter by department")
+    department: Optional[str] = Query(None, description="Filter by department"),
 ) -> Dict[str, Any]:
     """
     Summarizes total overtime hours per employee for a given period.
     Filters: department, date range.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -503,16 +558,27 @@ def overtime_summary(
             df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
         )
     else:
-        summary = df.groupby(["employee_id", "department"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["employee_id", "department"])
+            .size()
+            .reset_index(name="total_overtime_hours")
+        )
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "employee_id": row["employee_id"],
-            "department": row["department"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "employee_id": row["employee_id"],
+                "department": row["department"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"overtime_summary": result}
+
 
 # --- Report 21: Employee Overtime Days Per Week ---
 ## Report 21: Employee Overtime Days Per Week — see report_details.md
@@ -521,8 +587,13 @@ def overtime_weekly_summary(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     department: Optional[str] = Query(None, description="Filter by department"),
-    employee_ids: Optional[List[str]] = Query(None, description="Filter by employee IDs (comma separated)"),
-    week_start: str = Query("sunday", description="Start day of week: 'sunday' or 'monday' (default: sunday)")
+    employee_ids: Optional[List[str]] = Query(
+        None, description="Filter by employee IDs (comma separated)"
+    ),
+    week_start: str = Query(
+        "sunday",
+        description="Start day of week: 'sunday' or 'monday' (default: sunday)",
+    ),
 ) -> Dict[str, Any]:
     """
     For each employee, shows how many days they worked overtime in each week.
@@ -532,7 +603,8 @@ def overtime_weekly_summary(
     Columns are week labels (YYYY-Www), rows are employees, each cell is count of overtime days for that employee in that week.
     """
     import numpy as np
-    df = get_cleaned_df()
+
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -558,14 +630,22 @@ def overtime_weekly_summary(
         # Custom week: Sunday-Saturday
         # Shift dates so that week starts on Sunday
         # pandas weekday: Monday=0, Sunday=6
-        df["week_start"] = df["date"] - pd.to_timedelta((df["date"].dt.weekday + 1) % 7, unit="D")
+        df["week_start"] = df["date"] - pd.to_timedelta(
+            (df["date"].dt.weekday + 1) % 7, unit="D"
+        )
         df["week_label"] = df["week_start"].dt.strftime("%Y-W%U")
     # Group by employee and week, count overtime days
     summary = (
-        df.groupby(["employee_id", "week_label"]).size().reset_index(name="overtime_days")
+        df.groupby(["employee_id", "week_label"])
+        .size()
+        .reset_index(name="overtime_days")
     )
     # Pivot to wide format: rows=employee, columns=week
-    pivot = summary.pivot(index="employee_id", columns="week_label", values="overtime_days").fillna(0).astype(int)
+    pivot = (
+        summary.pivot(index="employee_id", columns="week_label", values="overtime_days")
+        .fillna(0)
+        .astype(int)
+    )
     # Build response
     result = []
     for emp_id, row in pivot.iterrows():
@@ -574,17 +654,18 @@ def overtime_weekly_summary(
     columns = ["employee_id"] + list(pivot.columns)
     return {"overtime_weekly_summary": result, "columns": columns}
 
+
 ## Report 18: Department Overtime Comparison — see report_details.md
 @router.get("/reports/overtime-department-comparison", response_model=Dict[str, Any])
 def overtime_department_comparison(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ) -> Dict[str, Any]:
     """
     Compares overtime hours across departments for a selected period.
     Filters: start_date, end_date.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -595,32 +676,41 @@ def overtime_department_comparison(
         df = df[df["date"] <= pd.to_datetime(end_date)]
     # Group by department, sum total_ot
     if "total_ot" in df.columns:
-        summary = (
-            df.groupby(["department"])["total_ot"].sum().reset_index()
-        )
+        summary = df.groupby(["department"])["total_ot"].sum().reset_index()
     else:
-        summary = df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
+        )
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "department": row["department"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "department": row["department"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"department_overtime_comparison": result}
+
 
 ## Report 19: Employee Overtime Comparison — see report_details.md
 @router.get("/reports/overtime-employee-comparison", response_model=Dict[str, Any])
 def overtime_employee_comparison(
-    employee_ids: Optional[List[str]] = Query(None, description="Filter by employee IDs (comma separated)"),
+    employee_ids: Optional[List[str]] = Query(
+        None, description="Filter by employee IDs (comma separated)"
+    ),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
 ) -> Dict[str, Any]:
     """
     Compares overtime hours between selected employees for a given period.
     Filters: employee_ids, start_date, end_date.
     """
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     # Standardize date column
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -634,23 +724,30 @@ def overtime_employee_comparison(
         df = df[df["employee_id"].isin(employee_ids)]
     # Group by employee, sum total_ot
     if "total_ot" in df.columns:
-        summary = (
-            df.groupby(["employee_id"])["total_ot"].sum().reset_index()
-        )
+        summary = df.groupby(["employee_id"])["total_ot"].sum().reset_index()
     else:
-        summary = df.groupby(["employee_id"]).size().reset_index(name="total_overtime_hours")
+        summary = (
+            df.groupby(["employee_id"]).size().reset_index(name="total_overtime_hours")
+        )
     # Build response
     result = []
     for _, row in summary.iterrows():
-        result.append({
-            "employee_id": row["employee_id"],
-            "total_overtime_hours": float(row["total_ot"]) if "total_ot" in row else int(row["total_overtime_hours"])
-        })
+        result.append(
+            {
+                "employee_id": row["employee_id"],
+                "total_overtime_hours": (
+                    float(row["total_ot"])
+                    if "total_ot" in row
+                    else int(row["total_overtime_hours"])
+                ),
+            }
+        )
     return {"employee_overtime_comparison": result}
+
 
 ## Report 3: List Reports — see report_details.md
 @router.get("/reports")
 def list_reports():
     """List all reports."""
-    df = get_cleaned_df()
+    df = data_cleaner.clean_all_csvs()
     return {"reports": []}

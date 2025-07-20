@@ -27,13 +27,18 @@ from fastapi import (
 from src.hr_analysis.data_cleaner import clean_all_csvs
 
 # Use project-level cleaned DataFrame loader
+<<<<<<< HEAD
 
+=======
+from src.hr_analysis.data_cleaner import clean_all_csvs
+>>>>>>> new_branch4
 
 # Initialize FastAPI router
 router = APIRouter()
 
 
 # --- Report Endpoints ---
+
 
 # Report 23: Department List Report — see report_details.md
 @router.get("/reports/departments", response_model=Dict[str, List[str]])

@@ -70,6 +70,15 @@ def clean_all_csvs() -> pd.DataFrame:
         merged_df = pd.concat(cleaned_dfs, axis=0, ignore_index=False)
     else:
         merged_df = pd.DataFrame()
+
+    # Add total_ot_rounded column
+    if "ot_value_1" in merged_df.columns and "ot_value_2" in merged_df.columns:
+        merged_df["total_ot_rounded"] = merged_df["ot_value_1"].fillna(0) + merged_df[
+            "ot_value_2"
+        ].fillna(0)
+    else:
+        merged_df["total_ot_rounded"] = 0
+
     clean_dir = base_dir / "clean_data"
     clean_dir.mkdir(exist_ok=True)
     cleaned_path = clean_dir / "cleaned.csv"

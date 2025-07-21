@@ -79,8 +79,8 @@ def clean_all_csvs() -> pd.DataFrame:
     return merged_df
 
 
-# if __name__ == "__main__":
-#     clean_all_csvs()
+if __name__ == "__main__":
+    clean_all_csvs()
 
 
 # """Data cleaning utilities for HR analysis."""

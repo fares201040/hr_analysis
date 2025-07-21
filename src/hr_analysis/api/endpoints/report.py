@@ -92,26 +92,24 @@ def overtime_month_comparison(
     if employee_id:
         df = df[df["employee_id"] == employee_id]
     # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        df = df[df["total_overtime"] > 0]
+    else:
+        df["total_overtime"] = 0
+
     # Add month column
     df["month"] = df["date"].dt.strftime("%Y-%m")
-    # Group by month, sum total_ot
-    if "total_ot" in df.columns:
-        summary = df.groupby(["month"])["total_ot"].sum().reset_index()
-    else:
-        summary = df.groupby(["month"]).size().reset_index(name="total_overtime_hours")
+    # Group by month, sum total_overtime
+    summary = df.groupby(["month"])["total_overtime"].sum().reset_index()
+
     # Build response
     result = []
     for _, row in summary.iterrows():
         result.append(
             {
                 "month": row["month"],
-                "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
-                    else int(row["total_overtime_hours"])
-                ),
+                "total_overtime_hours": float(row["total_overtime"]),
             }
         )
     return {"monthly_overtime_comparison": result}
@@ -231,9 +229,14 @@ def overtime_trends(
     # Filter by employee_id
     if employee_id:
         df = df[df["employee_id"] == employee_id]
+
     # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        df = df[df["total_overtime"] > 0]
+    else:
+        df["total_overtime"] = 0
+
     # Group by granularity
     if granularity == "monthly":
         df["period"] = df["date"].dt.strftime("%Y-%m")
@@ -246,11 +249,14 @@ def overtime_trends(
         group_cols.append("department")
     if employee_id:
         group_cols.append("employee_id")
-    summary = df.groupby(group_cols)["total_ot"].sum().reset_index()
+    summary = df.groupby(group_cols)["total_overtime"].sum().reset_index()
     # Build response
     result = []
     for _, row in summary.iterrows():
-        entry = {"date": row["period"], "total_overtime_hours": float(row["total_ot"])}
+        entry = {
+            "date": row["period"],
+            "total_overtime_hours": float(row["total_overtime"]),
+        }
         if "department" in row:
             entry["department"] = row["department"]
         if "employee_id" in row:
@@ -283,23 +289,22 @@ def top_overtime_employees(
     # Filter by department
     if department and "department" in df.columns:
         df = df[df["department"].str.lower() == department.lower()]
-    # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
-    # Group by employee, sum total_ot
-    if "total_ot" in df.columns:
-        summary = (
-            df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
-        )
+
+    # Calculate total overtime and filter
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        df = df[df["total_overtime"] > 0]
     else:
-        summary = (
-            df.groupby(["employee_id", "department"])
-            .size()
-            .reset_index(name="total_overtime_hours")
-        )
+        df["total_overtime"] = 0
+
+    # Group by employee, sum total_overtime
+    summary = (
+        df.groupby(["employee_id", "department"])["total_overtime"].sum().reset_index()
+    )
+
     # Sort and limit to top N
     summary = summary.sort_values(
-        by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours",
+        by="total_overtime",
         ascending=False,
     )
     summary = summary.head(top_n)
@@ -310,11 +315,7 @@ def top_overtime_employees(
             {
                 "employee_id": row["employee_id"],
                 "department": row["department"],
-                "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
-                    else int(row["total_overtime_hours"])
-                ),
+                "total_overtime_hours": float(row["total_overtime"]),
             }
         )
     return {"top_overtime_employees": result}
@@ -347,11 +348,16 @@ def overtime_exceptions(
     if department and "department" in df.columns:
         df = df[df["department"].str.lower() == department.lower()]
     # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        df = df[df["total_overtime"] > 0]
+    else:
+        df["total_overtime"] = 0
+
     # Apply threshold filter
-    if threshold_hours is not None and "total_ot" in df.columns:
-        df = df[df["total_ot"] > threshold_hours]
+    if threshold_hours is not None:
+        df = df[df["total_overtime"] > threshold_hours]
+
     # Build response
     result = []
     for _, row in df.iterrows():
@@ -364,10 +370,11 @@ def overtime_exceptions(
                     if hasattr(row["date"], "strftime")
                     else str(row["date"])
                 ),
-                "overtime_hours": float(row["total_ot"]) if "total_ot" in row else None,
+                "overtime_hours": float(row["total_overtime"]),
                 "exception_reason": (
                     "Exceeded daily limit"
-                    if threshold_hours is not None and row["total_ot"] > threshold_hours
+                    if threshold_hours is not None
+                    and row["total_overtime"] > threshold_hours
                     else "Requires approval"
                 ),
             }
@@ -398,12 +405,14 @@ def top_overtime_employees(
     if department and "department" in df.columns:
         df = df[df["department"].str.lower() == department.lower()]
     # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
-    # Group by employee, sum total_ot
-    if "total_ot" in df.columns:
+    if "total_ot_rounded" in df.columns:
+        df = df[df["total_ot_rounded"].fillna(0) > 0]
+    # Group by employee, sum total_ot_rounded
+    if "total_ot_rounded" in df.columns:
         summary = (
-            df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
+            df.groupby(["employee_id", "department"])["total_ot_rounded"]
+            .sum()
+            .reset_index()
         )
     else:
         summary = (
@@ -413,7 +422,11 @@ def top_overtime_employees(
         )
     # Sort and limit to top N
     summary = summary.sort_values(
-        by="total_ot" if "total_ot" in summary.columns else "total_overtime_hours",
+        by=(
+            "total_ot_rounded"
+            if "total_ot_rounded" in summary.columns
+            else "total_overtime_hours"
+        ),
         ascending=False,
     )
     summary = summary.head(top_n)
@@ -425,8 +438,8 @@ def top_overtime_employees(
                 "employee_id": row["employee_id"],
                 "department": row["department"],
                 "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
+                    float(row["total_ot_rounded"])
+                    if "total_ot_rounded" in row
                     else int(row["total_overtime_hours"])
                 ),
             }
@@ -463,8 +476,8 @@ def overtime_trends(
     if employee_id:
         df = df[df["employee_id"] == employee_id]
     # Only consider rows with overtime
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
+    if "total_ot_rounded" in df.columns:
+        df = df[df["total_ot_rounded"].fillna(0) > 0]
     # Group by granularity
     if granularity == "monthly":
         df["period"] = df["date"].dt.strftime("%Y-%m")
@@ -477,11 +490,14 @@ def overtime_trends(
         group_cols.append("department")
     if employee_id:
         group_cols.append("employee_id")
-    summary = df.groupby(group_cols)["total_ot"].sum().reset_index()
+    summary = df.groupby(group_cols)["total_ot_rounded"].sum().reset_index()
     # Build response
     result = []
     for _, row in summary.iterrows():
-        entry = {"date": row["period"], "total_overtime_hours": float(row["total_ot"])}
+        entry = {
+            "date": row["period"],
+            "total_overtime_hours": float(row["total_ot_rounded"]),
+        }
         if "department" in row:
             entry["department"] = row["department"]
         if "employee_id" in row:
@@ -509,24 +525,20 @@ def department_overtime(
         df = df[df["date"] >= pd.to_datetime(start_date)]
     if end_date:
         df = df[df["date"] <= pd.to_datetime(end_date)]
-    # Group by department, sum total_ot
-    if "total_ot" in df.columns:
-        summary = df.groupby(["department"])["total_ot"].sum().reset_index()
+    # Group by department, sum total_ot_rounded
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        summary = df.groupby(["department"])["total_overtime"].sum().reset_index()
     else:
-        summary = (
-            df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
-        )
+        summary = pd.DataFrame(columns=["department", "total_overtime"])
+
     # Build response
     result = []
     for _, row in summary.iterrows():
         result.append(
             {
                 "department": row["department"],
-                "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
-                    else int(row["total_overtime_hours"])
-                ),
+                "total_overtime_hours": float(row["total_overtime"]),
             }
         )
     return {"department_overtime": result}
@@ -554,10 +566,12 @@ def overtime_summary(
     # Filter by department
     if department and "department" in df.columns:
         df = df[df["department"].str.lower() == department.lower()]
-    # Group by employee, sum total_ot
-    if "total_ot" in df.columns:
+    # Group by employee, sum total_ot_rounded
+    if "total_ot_rounded" in df.columns:
         summary = (
-            df.groupby(["employee_id", "department"])["total_ot"].sum().reset_index()
+            df.groupby(["employee_id", "department"])["total_ot_rounded"]
+            .sum()
+            .reset_index()
         )
     else:
         summary = (
@@ -573,8 +587,8 @@ def overtime_summary(
                 "employee_id": row["employee_id"],
                 "department": row["department"],
                 "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
+                    float(row["total_ot_rounded"])
+                    if "total_ot_rounded" in row
                     else int(row["total_overtime_hours"])
                 ),
             }
@@ -621,9 +635,9 @@ def overtime_weekly_summary(
     # Filter by employee_ids
     if employee_ids:
         df = df[df["employee_id"].isin(employee_ids)]
-    # Only consider days with overtime (total_ot > 0)
-    if "total_ot" in df.columns:
-        df = df[df["total_ot"].fillna(0) > 0]
+    # Only consider days with overtime (total_ot_rounded > 0)
+    if "total_ot_rounded" in df.columns:
+        df = df[df["total_ot_rounded"].fillna(0) > 0]
     # Week calculation
     if week_start.lower() == "monday":
         # ISO week: Monday-Sunday
@@ -676,9 +690,9 @@ def overtime_department_comparison(
         df = df[df["date"] >= pd.to_datetime(start_date)]
     if end_date:
         df = df[df["date"] <= pd.to_datetime(end_date)]
-    # Group by department, sum total_ot
-    if "total_ot" in df.columns:
-        summary = df.groupby(["department"])["total_ot"].sum().reset_index()
+    # Group by department, sum total_ot_rounded
+    if "total_ot_rounded" in df.columns:
+        summary = df.groupby(["department"])["total_ot_rounded"].sum().reset_index()
     else:
         summary = (
             df.groupby(["department"]).size().reset_index(name="total_overtime_hours")
@@ -690,8 +704,8 @@ def overtime_department_comparison(
             {
                 "department": row["department"],
                 "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
+                    float(row["total_ot_rounded"])
+                    if "total_ot_rounded" in row
                     else int(row["total_overtime_hours"])
                 ),
             }
@@ -724,24 +738,22 @@ def overtime_employee_comparison(
     # Filter by employee_ids
     if employee_ids:
         df = df[df["employee_id"].isin(employee_ids)]
-    # Group by employee, sum total_ot
-    if "total_ot" in df.columns:
-        summary = df.groupby(["employee_id"])["total_ot"].sum().reset_index()
+
+    # Calculate total overtime from ot_value_1 and ot_value_2
+    if "ot_value_1" in df.columns and "ot_value_2" in df.columns:
+        df["total_overtime"] = df["ot_value_1"].fillna(0) + df["ot_value_2"].fillna(0)
+        summary = df.groupby(["employee_id"])["total_overtime"].sum().reset_index()
     else:
-        summary = (
-            df.groupby(["employee_id"]).size().reset_index(name="total_overtime_hours")
-        )
+        # Fallback if overtime columns are not available
+        summary = pd.DataFrame(columns=["employee_id", "total_overtime"])
+
     # Build response
     result = []
     for _, row in summary.iterrows():
         result.append(
             {
                 "employee_id": row["employee_id"],
-                "total_overtime_hours": (
-                    float(row["total_ot"])
-                    if "total_ot" in row
-                    else int(row["total_overtime_hours"])
-                ),
+                "total_overtime_hours": float(row["total_overtime"]),
             }
         )
     return {"employee_overtime_comparison": result}

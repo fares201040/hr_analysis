@@ -24,7 +24,7 @@ def clean_all_csvs() -> pd.DataFrame:
     clean_dir = Path(__file__).parent.parent / "clean_data"
     cleaned_path = clean_dir / "cleaned.csv"
     if cleaned_path.exists():
-        _cleaned_df_cache = pd.read_csv(cleaned_path, index_col=0)
+        _cleaned_df_cache = pd.read_csv(cleaned_path, index_col=0, low_memory=False)
         return _cleaned_df_cache
     base_dir = Path(__file__).parent.parent
     unclean_dir = base_dir / "unclean_data"

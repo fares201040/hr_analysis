@@ -8,8 +8,14 @@ import sys
 from pathlib import Path
 
 THIS_DIR = Path(__file__).parent
-TESTS_DIR_PARENT = (THIS_DIR / "..").resolve()
+print(sys.path)
 
+# print(THIS_DIR)
+
+# print(THIS_DIR / "..")
+
+TESTS_DIR_PARENT = (THIS_DIR / "..").resolve()
+# print(TESTS_DIR_PARENT)
 # add the parent directory of tests/ to PYTHONPATH
 # so that we can use "from tests.<module> import ..." in our tests and fixtures
 sys.path.insert(0, str(TESTS_DIR_PARENT))
